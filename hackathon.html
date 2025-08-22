@@ -1,0 +1,344 @@
+```<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EEG-Schizo • Pipeline Studio</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM CDNs to enable JSX and component rendering -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel Standalone to compile JSX in the browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Custom animations for the background effects -->
+    <style>
+        .animate-pulse-slow {
+            animation: pulse-slow 10s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-slow {
+            0%, 100% {
+                opacity: 0.2;
+            }
+            50% {
+                opacity: 0.1;
+            }
+        }
+        .fade-in {
+            animation: fadeIn 1s ease-in-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: #ffffff;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-[#060A1D] via-[#0A1D3A] to-[#1A2A4D] min-h-screen">
+    <!-- This is the root element where the React component will be rendered -->
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // This is the main React component for the entire landing page.
+        function SchizoEEGLanding() {
+            const [explanation, setExplanation] = React.useState("");
+            const [loading, setLoading] = React.useState(false);
+            const [error, setError] = React.useState(null);
+            const [selectedTerm, setSelectedTerm] = React.useState("");
+            const [researchIdea, setResearchIdea] = React.useState("");
+            const [ideaTopic, setIdeaTopic] = React.useState("");
+            
+            // Reusable function for exponential backoff during API calls
+            const exponentialBackoff = async (func, retries = 3, delay = 1000) => {
+                for (let i = 0; i < retries; i++) {
+                    try {
+                        return await func();
+                    } catch (e) {
+                        if (e.message.includes('429') && i < retries - 1) {
+                            await new Promise(res => setTimeout(res, delay * Math.pow(2, i)));
+                        } else {
+                            throw e;
+                        }
+                    }
+                }
+            };
+            
+            // This function is now empty as the image is static
+            const generateBrainImage = async () => {};
+
+            React.useEffect(() => {
+                // The useEffect hook is now empty since we are not fetching an image
+            }, []);
+
+            const handleExplainTerm = async () => {
+                setLoading(true);
+                setExplanation("");
+                setError(null);
+                
+                if (!selectedTerm) {
+                    setError("Please select a term to explain.");
+                    setLoading(false);
+                    return;
+                }
+
+                const prompt = `Explain the concept of "${selectedTerm}" in the context of deep learning for EEG analysis. Use simple, non-technical language and analogies suitable for a high school student.`;
+                const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                const payload = { contents: chatHistory };
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+                try {
+                    const response = await exponentialBackoff(() => fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    }));
+                    
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        setExplanation(text);
+                    } else {
+                        setError("Could not generate an explanation. Please try again.");
+                    }
+                } catch (e) {
+                    console.error("API call failed:", e);
+                    setError("Failed to fetch from the API. Please check your network connection.");
+                } finally {
+                    setLoading(false);
+                }
+            };
+            
+            const handleGenerateIdea = async () => {
+                setLoading(true);
+                setResearchIdea("");
+                setError(null);
+                
+                if (!ideaTopic) {
+                    setError("Please enter a topic to generate a research idea.");
+                    setLoading(false);
+                    return;
+                }
+
+                const prompt = `Generate a unique and interesting research hypothesis related to EEG, deep learning, and schizophrenia, based on the following topic: "${ideaTopic}". The output should be a single paragraph starting with "Hypothesis: " followed by the idea. Make it sound professional and scientifically sound.`;
+                const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                const payload = { contents: chatHistory };
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+                try {
+                    const response = await exponentialBackoff(() => fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    }));
+                    
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        setResearchIdea(text);
+                    } else {
+                        setError("Could not generate a research idea. Please try again.");
+                    }
+                } catch (e) {
+                    console.error("API call failed:", e);
+                    setError("Failed to fetch from the API. Please check your network connection.");
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen text-gray-100 relative overflow-x-hidden antialiased">
+                    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+                    <style>{`body{font-family:Outfit,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}`}</style>
+
+                    {/* Dynamic Ambient Gradients for a futuristic background effect */}
+                    <div className="pointer-events-none absolute -top-40 left-1/4 h-[30rem] w-[30rem] rounded-full bg-gradient-to-br from-cyan-400/30 to-indigo-500/20 blur-[150px] animate-pulse-slow" />
+                    <div className="pointer-events-none absolute top-20 right-0 h-[32rem] w-[32rem] rounded-full bg-gradient-to-br from-indigo-400/30 to-cyan-500/20 blur-[180px] animate-pulse-slow delay-500" />
+                    <div className="pointer-events-none absolute top-1/2 left-1/3 -translate-x-1/2 h-64 w-64 rounded-full bg-gradient-to-br from-teal-400/20 to-cyan-500/10 blur-[100px] animate-pulse-slow" />
+
+                    {/* Header with Glassmorphism effect */}
+                    <header className="sticky top-0 z-50 backdrop-blur-md bg-gradient-to-r from-[#060A1D]/90 via-cyan-900/80 to-indigo-900/80 border-b border-cyan-400/10 shadow-lg">
+                        <nav className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 grid place-items-center rounded-lg bg-gradient-to-br from-cyan-400 to-indigo-500 text-[#060A1D] font-bold shadow-xl">🧠</div>
+                                <h1 className="text-xl font-bold tracking-tight">EEG‑Schizo • <span className="text-gray-400 font-normal">Pipeline Studio</span></h1>
+                            </div>
+                            <div className="flex items-center gap-6">
+                                <a href="#pipeline" className="hidden md:inline text-sm text-gray-400 hover:text-white transition-colors duration-300">Pipeline</a>
+                                <a href="#train" className="text-sm rounded-full bg-white/10 px-4 py-2 hover:bg-white/15 transition-colors duration-300 font-medium">Train Now</a>
+                            </div>
+                        </nav>
+                    </header>
+
+                    <main className="mx-auto max-w-7xl px-6 py-16">
+                        {/* Hero Section with a gradient text effect */}
+                        <section className="grid md:grid-cols-2 items-center gap-12 mb-20">
+                            <div className="relative">
+                                <h2 className="text-5xl md:text-6xl font-extrabold leading-tight tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-indigo-400 to-teal-300 drop-shadow-lg">
+                                    End-to-end:<br />EEG → AI → Risk Score
+                                </h2>
+                                <p className="mt-6 text-gray-400 max-w-lg text-lg leading-relaxed">
+                                    An interactive demonstration of an advanced research pipeline that processes raw EEG signals, transforms them into time-frequency images, and analyzes them with a hybrid CNN-Transformer model to output a per-subject risk score.
+                                </p>
+
+                                <div className="mt-8 grid gap-4 sm:flex">
+                                    <a href="#demo" className="rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-indigo-400 hover:from-cyan-500 hover:to-indigo-500 transition-all duration-300 px-7 py-3 text-sm font-bold text-[#060A1D] flex items-center gap-2 shadow-lg">
+                                        Start Demo &rarr;
+                                    </a>
+                                    <a href="#pipeline" className="rounded-full border border-cyan-400/40 hover:border-cyan-400 transition-colors duration-300 px-7 py-3 text-sm font-semibold text-cyan-300">
+                                        Explore Pipeline
+                                    </a>
+                                </div>
+                                
+                                <div className="mt-12 rounded-2xl border border-gray-700 bg-gray-900/40 p-5 backdrop-blur-sm">
+                                    <h3 className="font-semibold text-gray-200">Key Constraint (Important)</h3>
+                                    <p className="mt-2 text-sm text-gray-400">
+                                        The pipeline enforces a <strong>subject-wise split</strong> during training. This is a critical research practice to prevent information leakage and ensure honest model performance evaluation.
+                                    </p>
+                                </div>
+                            </div>
+                            
+                                <div className="hidden md:flex justify-center items-center p-8 bg-gray-800/40 rounded-3xl border border-gray-700/60 shadow-xl">
+                                {/* Embedded JPEG graphic for the brain image */}
+                                <img src="./brain.jpeg" alt="Abstract brain with neural network patterns" className="w-full h-auto rounded-lg fade-in" />
+
+                            </div>
+                        </section>
+
+                        {/* Pipeline Visualization with hover effects */}
+                        <section id="pipeline" className="mt-20">
+                            <h3 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-400 to-teal-300 mb-8 text-center drop-shadow-lg">Interactive Pipeline <span className="text-cyan-400">Flow</span></h3>
+                            <div className="grid md:grid-cols-3 gap-8 items-stretch">
+                                {/* Step 1 */}
+                                <div className="bg-gradient-to-br from-gray-900/60 via-cyan-900/40 to-indigo-900/40 border border-cyan-400/20 rounded-3xl p-6 shadow-xl relative group transform hover:scale-105 transition-transform duration-300">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-indigo-500/10 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                    <div className="relative z-10">
+                                        <div className="h-12 w-12 grid place-items-center rounded-full bg-gradient-to-br from-cyan-400 to-indigo-500 text-2xl mb-4 shadow-lg">1</div>
+                                        <h4 className="font-bold text-xl text-gray-100">Upload Raw EEG</h4>
+                                        <p className="mt-2 text-sm text-gray-400">Supported formats: EDF, CSV. The demo processes data locally for speed and privacy.</p>
+                                        <div className="mt-4">
+                                            <input type="file" accept=".edf,.csv" className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-800 file:text-white/80 hover:file:bg-gray-700/80 transition-colors cursor-pointer" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Step 2 */}
+                                <div className="bg-gradient-to-br from-gray-900/60 via-cyan-900/40 to-indigo-900/40 border border-cyan-400/20 rounded-3xl p-6 shadow-xl relative group transform hover:scale-105 transition-transform duration-300">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-indigo-500/10 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                    <div className="relative z-10">
+                                        <div className="h-12 w-12 grid place-items-center rounded-full bg-gradient-to-br from-cyan-400 to-indigo-500 text-2xl mb-4 shadow-lg">2</div>
+                                        <h4 className="font-bold text-xl text-gray-100">Windowing & Cleanup</h4>
+                                        <p className="mt-2 text-sm text-gray-400">The signal is segmented into overlapping windows, each becoming a unique sample for the model. Illustrative:</p>
+                                        <div className="mt-4 h-24 w-full rounded-xl bg-gray-800/60 p-3 flex items-center justify-center">
+                                            <span className="text-xs text-gray-500 animate-pulse">Windowing visualization...</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Step 3 */}
+                                <div className="bg-gradient-to-br from-gray-900/60 via-cyan-900/40 to-indigo-900/40 border border-cyan-400/20 rounded-3xl p-6 shadow-xl relative group transform hover:scale-105 transition-transform duration-300">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-indigo-500/10 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                    <div className="relative z-10">
+                                        <div className="h-12 w-12 grid place-items-center rounded-full bg-gradient-to-br from-cyan-400 to-indigo-500 text-2xl mb-4 shadow-lg">3</div>
+                                        <h4 className="font-bold text-xl text-gray-100">Time-Frequency Images</h4>
+                                        <p className="mt-2 text-sm text-gray-400">Each window is transformed into two distinct images: a <strong>Spectrogram</strong> and a <strong>Scalogram</strong>.</p>
+                                        <div className="mt-4 grid grid-cols-2 gap-2">
+                                            <div className="rounded-lg bg-gray-700/60 p-2 text-center text-xs text-gray-300">STFT</div>
+                                            <div className="rounded-lg bg-gray-700/60 p-2 text-center text-xs text-gray-300">CWT</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Training and Results with improved layout */}
+                        <section id="train" className="mt-20">
+                            <h3 className="text-3xl font-bold text-gray-200 mb-8 text-center">Model Training & <span className="text-cyan-400">Metrics</span></h3>
+                            <div className="grid md:grid-cols-2 gap-8">
+                                <div className="bg-gray-900/40 border border-gray-700 rounded-3xl p-6">
+                                    <h4 className="font-bold text-xl text-gray-200">Training Configuration</h4>
+                                    <p className="mt-2 text-sm text-gray-400">Configure parameters for the simulated training process.</p>
+                                    <div className="mt-6 space-y-4">
+                                        <label className="block text-sm font-medium text-gray-400">Model Architecture</label>
+                                        <select className="w-full rounded-lg bg-gray-800/60 px-4 py-3 text-sm text-gray-200 outline-none transition-colors focus:bg-gray-700">
+                                            <option>Dual-CNN + Transformer</option>
+                                            <option>Simple CNN</option>
+                                        </select>
+                                        <label className="block text-sm font-medium text-gray-400">Subject-wise Split (%)</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <input placeholder="Train" defaultValue={70} className="w-full rounded-lg bg-gray-800/60 px-3 py-2 text-sm text-center text-gray-200 outline-none" />
+                                            <input placeholder="Val" defaultValue={15} className="w-full rounded-lg bg-gray-800/60 px-3 py-2 text-sm text-center text-gray-200 outline-none" />
+                                            <input placeholder="Test" defaultValue={15} className="w-full rounded-lg bg-gray-800/60 px-3 py-2 text-sm text-center text-gray-200 outline-none" />
+                                        </div>
+                                        <button className="mt-4 w-full rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-indigo-400 py-3 font-bold text-[#060A1D] hover:from-cyan-500 hover:to-indigo-500 transition-colors shadow-lg">
+                                            Start Training
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="bg-gray-900/40 border border-gray-700 rounded-3xl p-6 flex flex-col justify-between">
+                                    <h4 className="font-bold text-xl text-gray-200">Training Monitor</h4>
+                                    <div className="mt-4 flex-grow">
+                                        <div className="flex justify-between items-center text-sm text-gray-400 mb-2">
+                                            <span>Epoch 12 / 50</span>
+                                            <span>24%</span>
+                                        </div>
+                                        <div className="w-full h-2 rounded-full bg-gray-700">
+                                            <div className="h-2 rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500" style={{ width: '24%' }} />
+                                        </div>
+                                        <div className="mt-6 grid grid-cols-3 gap-4">
+                                            <div className="rounded-lg bg-gray-800/60 p-4 text-center">
+                                                <p className="text-sm text-gray-400">Val AUROC</p>
+                                                <p className="font-bold text-2xl mt-1 text-teal-400">0.92</p>
+                                            </div>
+                                            <div className="rounded-lg bg-gray-800/60 p-4 text-center">
+                                                <p className="text-sm text-gray-400">F1 Score</p>
+                                                <p className="font-bold text-2xl mt-1 text-teal-400">0.88</p>
+                                            </div>
+                                            <div className="rounded-lg bg-gray-800/60 p-4 text-center">
+                                                <p className="text-sm text-gray-400">Accuracy</p>
+                                                <p className="font-bold text-2xl mt-1 text-teal-400">91.2%</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-8">
+                                        <button className="w-full rounded-full bg-white/10 text-gray-200 hover:bg-white/20 transition-colors py-3 font-semibold">
+                                            View Full Report
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </main>
+
+                    <footer className="mt-20 border-t border-gray-800 py-6 text-center text-sm text-gray-500">
+                        <p>© {new Date().getFullYear()} EEG-Schizo. All rights reserved. Research demo, not for clinical use.</p>
+                    </footer>
+                </div>
+            );
+        }
+
+        // Render the main component into the root element
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<SchizoEEGLanding />);
+    </script>
+</body>
+</html>
+```
